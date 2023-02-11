@@ -1,5 +1,5 @@
 
-const {saveArchive, readArchive} = require("./fileSystemManager")
+import {saveArchive, readArchive} from "./fileSystemManager.js"
 //Desafio entregable 1
 
 class ProductManager {
@@ -48,15 +48,27 @@ class ProductManager {
         
     }
     
-    getProducts = async () => await readArchive(this.path)
+    getProducts = async (limit) =>{
+        return await readArchive(this.path)
+        .then(res => {
+            if(limit){
+                return res.slice(0, limit)
+            }else{
+                return res
+            }
+        })
+    } 
 
-    getProductsById =  (id) => {
-        const product = this.products.find(product => product.id === id )
-        if(product){
-            return product
-        }else{
-            return "Error: Product not found"
-        }
+    getProductsById = async (id) => {
+        return await this.getProducts()
+        .then(products => products.find(product => Number(product.id) === Number(id)))
+        .then(product => {
+            if(product){
+                return {ok: true, content: product}
+            }else{
+                return {ok: false, content: "Product not found"}
+            }
+        } )
     }
     deleteById = async (id) =>{
         this.products = this.products.filter(product => Number(product.id) !== Number(id))
@@ -64,13 +76,14 @@ class ProductManager {
         return this.product
     }
 }
+const manager = new ProductManager("./src/db/products.json")
 
-const manager = new ProductManager("./db/products.json")
-
-manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA01"}).then(res => console.log(res))
+/* manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA01"}).then(res => console.log(res))
 manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA01"}).then(res => console.log(res))
 manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA03"}).then(res => console.log(res))
 manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA04"}).then(res => console.log(res))
 manager.addProduct({title: "banana",description: "lorem ipsum dolor", price: 1222, thumbnail: "...", stock: 23, code: "AA02"}).then(res => console.log(res))
-manager.addProduct({title: "banana", price: 1222, thumbnail: "...", stock: 23, code: "AA02"}).then(res => console.log(res))
+manager.addProduct({title: "banana", price: 1222, thumbnail: "...", stock: 23, code: "AA02"}).then(res => console.log(res)) */
+
+export { manager }
 
