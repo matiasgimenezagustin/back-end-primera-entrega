@@ -1,28 +1,37 @@
-
+import e from "express";
+import { ErrorsManager } from "./errorManager.js";
 import {saveArchive, readArchive} from "./fileSystemManager.js"
 //Desafio entregable 1
+const errorManager = new ErrorsManager()
 
 class ProductManager {
-    static idCounter = 0;
-    static productProperties = ["title", "description", "price", "thumbnail", "code", "stock"]
+    static counterIdPath = "./src/db/counters.json"
+    static productProperties = ["title", "description", "price", "code", "stock"]
+    static errors = {
+        incompleteProduct: errorManager.createError(`The product must have ${ProductManager.productProperties.join(", ")}`) ,
+        repeatCodeField: errorManager.createError("You cannot repeat the code field"),
+        invalidId: errorManager.createError("The product´s id provided incorrect"),
+        notFound: errorManager.createError("Product not found")
+    }
+
     constructor(path){
         this.path = path
         this.products = []
+        this.counter = 0
     }
 
-    updateProduct = async (productToUpdate) =>{
-        const indice = this.products.findIndex(product => Number(product.id) === Number(productToUpdate.id))
+    updateProduct = async (id, productToUpdate) =>{
+        const indice = this.products.findIndex(product => Number(product.id) === Number(id))
         if(indice === -1){
-            return {"error": "The product´s id provided incorrect"}
+            return ProductManager.errors.invalidId
         }else{
             if(this.hasAllProperties(productToUpdate)){
                 this.products[indice] =  productToUpdate
                 await saveArchive(this.path, this.products)
                 return this.products
             }else{
-                return {"error": `Error: the product must have ${ProductManager.productProperties.join(", ")}`}
+                return ProductManager.errors.incompleteProduct
             }
-            
         }
     }
     hasAllProperties = (productToCheck) =>{
@@ -35,15 +44,18 @@ class ProductManager {
     addProduct = async (productToAdd) => {
         
         if(this.hasAllProperties(productToAdd)){
-            if(!this.products.some(product => product.code === productToAdd.code)){
-                this.products.push({...productToAdd, id: ProductManager.idCounter++})
+            if(!(this.products.some(product => product.code === productToAdd.code))){
+                console.log("guardado")
+                this.products = [...this.products, {...productToAdd, id: this.counter++}]
                 await saveArchive(this.path, this.products)
-                return await readArchive(this.path).then(res => res)
+                await saveArchive(ProductManager.counterIdPath, {"productsCounter": this.counter})
+                const response = await readArchive(this.path)
+                return {...response, ok:true}
             }else{
-                return "Error: you cannot repeat the code field"
+                return ProductManager.errors.repeatCodeField
             }
         }else{
-            return `Error: the product must have ${ProductManager.productProperties.join(", ")}`
+            return ProductManager.errors.incompleteProduct
         }
         
     }
@@ -66,24 +78,31 @@ class ProductManager {
             if(product){
                 return {ok: true, content: product}
             }else{
-                return {ok: false, content: "Product not found"}
+                return ProductManager.errors.notFound
             }
         } )
     }
     deleteById = async (id) =>{
+        let productsQuantity = this.products.length
         this.products = this.products.filter(product => Number(product.id) !== Number(id))
+        if(this.products.length === productsQuantity){
+            return ProductManager.errors.notFound
+        }
         await saveArchive(this.path,this.products)
-        return this.product
+        return this.products
+    }
+    init = async () =>{
+        const currentProducts = await readArchive(this.path)
+        const counterId = await readArchive(ProductManager.counterIdPath)
+        this.counter = counterId.productsCounter
+        if(Object.keys(currentProducts).length > 0){
+            currentProducts.forEach(product => this.products.push(product))
+        }else{
+            this.products = []
+        }
     }
 }
 const manager = new ProductManager("./src/db/products.json")
-
-/* manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA01"}).then(res => console.log(res))
-manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA01"}).then(res => console.log(res))
-manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA03"}).then(res => console.log(res))
-manager.addProduct({title: "manzana",description: "lorem ipsum dolor", price: 1223, thumbnail: "...", stock: 4, code: "AA04"}).then(res => console.log(res))
-manager.addProduct({title: "banana",description: "lorem ipsum dolor", price: 1222, thumbnail: "...", stock: 23, code: "AA02"}).then(res => console.log(res))
-manager.addProduct({title: "banana", price: 1222, thumbnail: "...", stock: 23, code: "AA02"}).then(res => console.log(res)) */
-
+manager.init()
 export { manager }
 
