@@ -11,15 +11,20 @@ class CartsManager {
         this.counter = 0
         this.carts = []
     }
+    getCartById = (id) =>{
+        const cart = this.carts.find(cart => cart.id === Number(id))
+        if(cart){
+            return {...cart, ok: true}
+        }
+        return CartsManager.errors.cartNotFound
+    }
     createCart = async () => {
         this.carts = [...this.carts, {id: this.counter++, products: []}]
-
         await saveArchive(CartsManager.counterCartPath, {counterCart: this.counter})
         await saveArchive(this.path, this.carts)
         return this.carts
     }
     addProductToCart = async (cid, pid) =>{
-
         const index = this.carts.findIndex(cart => cart.id === Number(cid))
         if( index != -1 ){
             const currentCart = this.carts[index].products
@@ -30,7 +35,7 @@ class CartsManager {
                 this.carts[index].products = [...currentCart, {id: Number(pid), quantity: 1}]
             }
             await saveArchive(this.path, this.carts)
-            return this.carts
+            return {ok: true, content: this.carts}
         }else{
             return CartsManager.errors.cartNotFound
         }
