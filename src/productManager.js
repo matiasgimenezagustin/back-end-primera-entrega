@@ -1,4 +1,4 @@
-import e from "express";
+
 import { ErrorsManager } from "./errorManager.js";
 import {saveArchive, readArchive} from "./fileSystemManager.js"
 //Desafio entregable 1
@@ -97,8 +97,6 @@ class ProductManager {
         this.counter = counterId.productsCounter
         if(Object.keys(currentProducts).length > 0){
             currentProducts.forEach(product => this.products.push(product))
-        }else{
-            this.products = []
         }
     }
 }
